@@ -1,6 +1,8 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-public class LocalPlayerMovement : MonoBehaviour
+using Unity.Cinemachine;
+public class NetworkPlayerMovement : NetworkBehaviour
 {
     [Header("найстройки движения")]
     [SerializeField] private float MaxSpeed = 5f;
@@ -13,6 +15,22 @@ public class LocalPlayerMovement : MonoBehaviour
     private Vector2 inputVector;
     private Vector2 velocity;
 
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        if (IsOwner)
+        {
+            CinemachineCamera vcam = GameObject.FindAnyObjectByType<CinemachineCamera>();
+            if (vcam != null) { vcam.Follow = this.transform;
+                Debug.Log("camera sucessefully linked with character");
+            }
+            else
+            {
+                Debug.LogWarning("vcam havent been found on scene , check object name");
+            }
+        }
+    }
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -21,6 +39,7 @@ public class LocalPlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (!IsOwner) return;
         float MoveX = 0f;
         float MoveY = 0f;
         
@@ -39,6 +58,7 @@ public class LocalPlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (!IsOwner) return;
         MovePlayer();
     }
 
