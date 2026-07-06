@@ -15,6 +15,8 @@ public class NetworkPlayerMovement : NetworkBehaviour
     private Vector2 inputVector;
     private Vector2 velocity;
 
+    private SurvivorDash dashScript;
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -35,6 +37,7 @@ public class NetworkPlayerMovement : NetworkBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         mainCamera = Camera.main;
+        dashScript = GetComponent<SurvivorDash>();
     }
 
     void Update()
@@ -59,6 +62,10 @@ public class NetworkPlayerMovement : NetworkBehaviour
     void FixedUpdate()
     {
         if (!IsOwner) return;
+        if (dashScript != null && dashScript.IsMovementControlledByDash())
+        {
+            return;
+        }
         MovePlayer();
     }
 
@@ -89,6 +96,11 @@ public class NetworkPlayerMovement : NetworkBehaviour
         float angle = Mathf.Atan2(lookDirection.y, lookDirection.x) * Mathf.Rad2Deg - 90f;
 
         rb.MoveRotation(angle);
+    }
+
+    public Vector2 GetInputVector()
+    {
+        return inputVector;
     }
 }
 
