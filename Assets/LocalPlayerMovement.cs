@@ -11,6 +11,7 @@ public class NetworkPlayerMovement : NetworkBehaviour
 
     private Rigidbody2D rb;
     private Camera mainCamera;
+    private Animator animator;
 
     private Vector2 inputVector;
     private Vector2 velocity;
@@ -38,6 +39,7 @@ public class NetworkPlayerMovement : NetworkBehaviour
         rb = GetComponent<Rigidbody2D>();
         mainCamera = Camera.main;
         dashScript = GetComponent<SurvivorDash>();
+        animator = GetComponent<Animator>();
     }
 
     void Update()
@@ -56,6 +58,12 @@ public class NetworkPlayerMovement : NetworkBehaviour
 
         inputVector = new Vector2(MoveX, MoveY).normalized;
         RotateTowardsMouse();
+
+        if (animator != null)
+        {
+            bool isMoving = inputVector.magnitude > 0;
+            animator.SetBool("IsMoving", isMoving);
+        }
 
     }
 
