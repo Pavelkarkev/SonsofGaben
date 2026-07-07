@@ -17,7 +17,9 @@ GameObject:
   - component: {fileID: 2436892728902738894}
   - component: {fileID: 5501444771239998257}
   - component: {fileID: -8808185296591844536}
-  m_Layer: 7
+  - component: {fileID: 4021884450152369547}
+  - component: {fileID: 9190192117676586351}
+  m_Layer: 8
   m_Name: Survivor_prefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -187,7 +189,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3479721628
+  GlobalObjectIdHash: 3774837106
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -299,6 +301,43 @@ MonoBehaviour:
   postDashSpeedMultiplier: 0.75
   postDashDuration: 0.5
   dashCooldown: 1.5
+--- !u!114 &4021884450152369547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3491217144196618239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b91f3ee6f45f7e44a0daeaa6b360b68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxHealth: 100
+  currentHealth:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+--- !u!114 &9190192117676586351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3491217144196618239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92efd28a93cdce4e984f12025bf405f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
+  ShowTopMostFoldoutHeaderGroup: 1
+  interactionRadius: 2
+  doorLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  isKiller: 0
 --- !u!1 &4470486691456532805
 GameObject:
   m_ObjectHideFlags: 0
@@ -309,7 +348,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4028652678524239011}
   - component: {fileID: 6838114592868549774}
-  m_Layer: 7
+  m_Layer: 8
   m_Name: BodyGlow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -442,7 +481,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4797929374629479511}
   - component: {fileID: 4959605219930498496}
-  m_Layer: 7
+  m_Layer: 8
   m_Name: DirectionPointer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -534,7 +573,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3840247632738857196}
   - component: {fileID: 6845595315410775462}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: FieldOfView
   m_TagString: Untagged
   m_Icon: {fileID: 0}
