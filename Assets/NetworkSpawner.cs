@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using System.Text;
+using UnityEngine.SceneManagement;
 
 public class NetworkFlexibleSpawner : MonoBehaviour
 {
@@ -17,29 +18,36 @@ public class NetworkFlexibleSpawner : MonoBehaviour
 
     private void Start()
     {
+        selectKillerButton.onClick.RemoveAllListeners();
+        selectSurvivorButton.onClick.RemoveAllListeners();
+
         selectKillerButton.onClick.AddListener(() => SetRoleAndConnect("Killer"));
         selectSurvivorButton.onClick.AddListener(() => SetRoleAndConnect("Survivor"));
 
-        // Регистрируем одобрение подключения на сервере
-        NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        }
     }
 
     private void SetRoleAndConnect(string role)
     {
         chosenRole = role;
 
-        // Упаковываем строку с ролью в байты, чтобы отправить серверу при коннекте
+        if (NetworkManager.Singleton == null) return;
+
         byte[] payload = Encoding.UTF8.GetBytes(role);
         NetworkManager.Singleton.NetworkConfig.ConnectionData = payload;
 
-        // В зависимости от того, первый ли мы игрок, запускаем Host или Client
-        // Для локальных тестов: первый запускает Host, остальные Client
+        if (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsClient)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
         if (!NetworkManager.Singleton.IsServer && !NetworkManager.Singleton.IsClient)
         {
-            // Если сеть еще не запущена, проверяем: если мы хотим быть хостом
-            // В реальной игре тут будет просто StartClient() для выделенного сервера,
-            // но для тестов на одном ПК делаем проверку:
             if (GameObject.FindAnyObjectByType<NetworkObject>() == null)
             {
                 NetworkManager.Singleton.StartHost();
@@ -55,51 +63,40 @@ public class NetworkFlexibleSpawner : MonoBehaviour
 
     private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-        // Этот метод выполняется НА СЕРВЕРЕ, когда кто-то пытается войти
         response.Approved = true;
-        response.CreatePlayerObject = false; // Отключаем автоспавн дефолтного игрока
-
-        // Читаем, какую роль запросил клиент
-        string clientRole = Encoding.UTF8.GetString(request.Payload);
-
-        // Сохраняем информацию о роли (можно передать дальше в логику спавна)
-        // Для простоты используем кастомный спавн в OnClientConnected
+        response.CreatePlayerObject = false;
     }
 
     private void OnClientConnected(ulong clientId)
     {
-        // Спавнить имеет право только сервер
         if (!NetworkManager.Singleton.IsServer) return;
 
-        // Получаем payload подключившегося клиента
-        byte[] payload = NetworkManager.Singleton.DisconnectReason == "" ?
-            NetworkManager.Singleton.NetworkConfig.ConnectionData : null;
-
-        // Если это сам Хост, берем его локально выбранную роль
         string roleToSpawn = chosenRole;
 
         if (clientId != NetworkManager.Singleton.LocalClientId)
         {
-            var connectionData = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-            // В реальном проекте payload достается из сессии, для теста определим по очереди:
-            // Если маньяка еще нет — спавним маньяка, иначе выжившего (временный хак для теста)
             roleToSpawn = (GameObject.FindWithTag("Killer") == null && chosenRole == "Killer") ? "Killer" : "Survivor";
         }
 
         GameObject prefabToSpawn = (roleToSpawn == "Killer") ? killer_prefab : Survivor_prefab;
 
+        if (prefabToSpawn == null) return;
+
         GameObject playerInstance = Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
 
-        // Важно: даем тег, чтобы сервер мог считать количество Маньяков на сцене
         if (roleToSpawn == "Killer") playerInstance.tag = "Killer";
 
-        playerInstance.GetComponent<NetworkObject>().SpawnWithOwnership(clientId);
+        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.SpawnWithOwnership(clientId);
+        }
     }
 
     private void DeactivateMenu()
     {
-        selectKillerButton.gameObject.SetActive(false);
-        selectSurvivorButton.gameObject.SetActive(false);
+        if (selectKillerButton != null) selectKillerButton.gameObject.SetActive(false);
+        if (selectSurvivorButton != null) selectSurvivorButton.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
@@ -107,6 +104,10 @@ public class NetworkFlexibleSpawner : MonoBehaviour
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            if (NetworkManager.Singleton.ConnectionApprovalCallback == ApprovalCheck)
+            {
+                NetworkManager.Singleton.ConnectionApprovalCallback = null;
+            }
         }
     }
 }
