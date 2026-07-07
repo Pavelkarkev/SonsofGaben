@@ -31,4 +31,23 @@ public class Health : NetworkBehaviour
     {
         Debug.Log($"{gameObject.name} is dead.");
     }
+
+    // ÑÄÅËÀËÈ ÌÅÒÎÄ PUBLIC È ÈÑÏÐÀÂÈËÈ .Value Ñ ÁÎËÜØÎÉ ÁÓÊÂÛ!
+    public void Heal(int healValue)
+    {
+        if (!IsServer) return;
+
+        // Åñëè õï óæå íà ìàêñèìóìå, âûõîäèì
+        if (currentHealth.Value >= maxHealth)
+        {
+            return;
+        }
+
+        currentHealth.Value += healValue;
+
+        if (currentHealth.Value > maxHealth)
+        {
+            currentHealth.Value = maxHealth;
+        }
+    }
 }
