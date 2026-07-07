@@ -14,7 +14,12 @@ public class NetworkFlexibleSpawner : MonoBehaviour
     [SerializeField] private GameObject killer_prefab;
     [SerializeField] private GameObject Survivor_prefab;
 
+    [Header("Doors")]
+    [SerializeField] private GameObject doorPrefab;
+    [SerializeField] private Vector3[] doorSpawnPositions;
+
     private string chosenRole = "Survivor";
+    private bool isHostInitialized = false;
 
     private void Start()
     {
@@ -24,33 +29,24 @@ public class NetworkFlexibleSpawner : MonoBehaviour
         selectKillerButton.onClick.AddListener(() => SetRoleAndConnect("Killer"));
         selectSurvivorButton.onClick.AddListener(() => SetRoleAndConnect("Survivor"));
 
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-            NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
-            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-        }
+        NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     private void SetRoleAndConnect(string role)
     {
         chosenRole = role;
 
-        if (NetworkManager.Singleton == null) return;
-
         byte[] payload = Encoding.UTF8.GetBytes(role);
         NetworkManager.Singleton.NetworkConfig.ConnectionData = payload;
 
-        if (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsClient)
-        {
-            NetworkManager.Singleton.Shutdown();
-        }
-
         if (!NetworkManager.Singleton.IsServer && !NetworkManager.Singleton.IsClient)
         {
-            if (GameObject.FindAnyObjectByType<NetworkObject>() == null)
+            if (!isHostInitialized)
             {
+                isHostInitialized = true;
                 NetworkManager.Singleton.StartHost();
+                SpawnAllDoors();
             }
             else
             {
@@ -59,6 +55,17 @@ public class NetworkFlexibleSpawner : MonoBehaviour
         }
 
         DeactivateMenu();
+    }
+
+    private void SpawnAllDoors()
+    {
+        if (doorPrefab == null || doorSpawnPositions == null) return;
+
+        foreach (Vector3 pos in doorSpawnPositions)
+        {
+            GameObject doorInstance = Instantiate(doorPrefab, pos, Quaternion.identity);
+            doorInstance.GetComponent<NetworkObject>().Spawn();
+        }
     }
 
     private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
@@ -79,9 +86,6 @@ public class NetworkFlexibleSpawner : MonoBehaviour
         }
 
         GameObject prefabToSpawn = (roleToSpawn == "Killer") ? killer_prefab : Survivor_prefab;
-
-        if (prefabToSpawn == null) return;
-
         GameObject playerInstance = Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
 
         if (roleToSpawn == "Killer") playerInstance.tag = "Killer";

@@ -266,6 +266,8 @@ GameObject:
   - component: {fileID: 7727418284278284436}
   - component: {fileID: 2233187814555164360}
   - component: {fileID: 5455632535637396891}
+  - component: {fileID: -4293559026324024165}
+  - component: {fileID: 6561773863121256597}
   m_Layer: 7
   m_Name: killer_prefab
   m_TagString: Killer
@@ -283,7 +285,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1991416762010640292}
@@ -552,6 +554,44 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-4293559026324024165
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3438176915806653949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8547df2d29e2574cb48c47f8be64b00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KillerAttack
+  ShowTopMostFoldoutHeaderGroup: 1
+  damageAmount: 40
+  attackRange: 2.5
+  attackAngle: 70
+  attackCooldown: 1.5
+  survivorLayer:
+    serializedVersion: 2
+    m_Bits: 256
+--- !u!114 &6561773863121256597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3438176915806653949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92efd28a93cdce4e984f12025bf405f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteraction
+  ShowTopMostFoldoutHeaderGroup: 1
+  interactionRadius: 2
+  doorLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  isKiller: 1
 --- !u!1 &3548838628995695180
 GameObject:
   m_ObjectHideFlags: 0
@@ -699,4 +739,8 @@ MonoBehaviour:
       NameHash: 120489994
       Synchronize: 1
       ParameterType: 4
+    - name: Attack
+      NameHash: 1080829965
+      Synchronize: 1
+      ParameterType: 9
   AnimatorParametersExpanded: 0
