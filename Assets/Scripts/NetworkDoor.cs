@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 public class NetworkDoor : NetworkBehaviour
 {
@@ -11,6 +12,7 @@ public class NetworkDoor : NetworkBehaviour
     [Header("Components")]
     [SerializeField] private Collider2D physicalCollider;
     [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private ShadowCaster2D shadowCaster;
 
     [Header("Visuals (Optional)")]
     [SerializeField] private Sprite openSprite;
@@ -51,6 +53,10 @@ public class NetworkDoor : NetworkBehaviour
             Color c = spriteRenderer.color;
             c.a = open ? 0.3f : 1f;
             spriteRenderer.color = c;
+        }
+        if (shadowCaster != null)
+        {
+            shadowCaster.enabled = !open;
         }
     }
 

@@ -17,6 +17,9 @@ public class SurvivorDash : NetworkBehaviour
     private bool isSlowingDown;
     private bool canDash = true;
 
+    public float DashCooldown => dashCooldown;
+    public float CurrentCooldownTimer { get; private set; } 
+
     private void Start()
     {
         if (rb == null)
@@ -98,7 +101,14 @@ public class SurvivorDash : NetworkBehaviour
 
         isSlowingDown = false;
 
-        yield return new WaitForSeconds(dashCooldown);
+        CurrentCooldownTimer = dashCooldown;
+        while (CurrentCooldownTimer > 0f)
+        {
+            CurrentCooldownTimer -= Time.deltaTime;
+            yield return null;
+        }
+        CurrentCooldownTimer = 0f;
+
         canDash = true;
     }
 

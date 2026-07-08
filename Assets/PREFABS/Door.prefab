@@ -31,8 +31,8 @@ Transform:
   m_GameObject: {fileID: 918828242086324193}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4, z: 0}
-  m_LocalScale: {x: 3, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -232,6 +232,7 @@ MonoBehaviour:
   breakDuration: 5
   physicalCollider: {fileID: 6891568234354442019}
   spriteRenderer: {fileID: 1645155773421527201}
+  shadowCaster: {fileID: 7621090636473721759}
   openSprite: {fileID: -2881801032832799624, guid: 43449c72e0a0e03409fcf30f57f9abc4, type: 3}
   closedSprite: {fileID: -3793187834569482981, guid: 43449c72e0a0e03409fcf30f57f9abc4, type: 3}
 --- !u!114 &7621090636473721759
