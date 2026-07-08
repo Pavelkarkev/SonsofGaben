@@ -2,8 +2,7 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using System.Text;
-using UnityEditor;
-using Unity.VisualScripting;
+using UnityEngine.SceneManagement;
 
 public class NetworkFlexibleSpawner : MonoBehaviour
 {
@@ -24,6 +23,9 @@ public class NetworkFlexibleSpawner : MonoBehaviour
 
     private void Start()
     {
+        selectKillerButton.onClick.RemoveAllListeners();
+        selectSurvivorButton.onClick.RemoveAllListeners();
+
         selectKillerButton.onClick.AddListener(() => SetRoleAndConnect("Killer"));
         selectSurvivorButton.onClick.AddListener(() => SetRoleAndConnect("Survivor"));
 
@@ -88,13 +90,17 @@ public class NetworkFlexibleSpawner : MonoBehaviour
 
         if (roleToSpawn == "Killer") playerInstance.tag = "Killer";
 
-        playerInstance.GetComponent<NetworkObject>().SpawnWithOwnership(clientId);
+        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.SpawnWithOwnership(clientId);
+        }
     }
 
     private void DeactivateMenu()
     {
-        selectKillerButton.gameObject.SetActive(false);
-        selectSurvivorButton.gameObject.SetActive(false);
+        if (selectKillerButton != null) selectKillerButton.gameObject.SetActive(false);
+        if (selectSurvivorButton != null) selectSurvivorButton.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
@@ -102,6 +108,10 @@ public class NetworkFlexibleSpawner : MonoBehaviour
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            if (NetworkManager.Singleton.ConnectionApprovalCallback == ApprovalCheck)
+            {
+                NetworkManager.Singleton.ConnectionApprovalCallback = null;
+            }
         }
     }
 }
