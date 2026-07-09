@@ -11,7 +11,7 @@ public class MenuManager : MonoBehaviour
     [Header("Панели меню")]
     public GameObject mainMenuPanel;
     public GameObject settingsPanel;
-
+    public GameObject hostgamepanel;
     [Header("Тексты кнопок (для изменения)")]
     public TextMeshProUGUI startText;
     public TextMeshProUGUI settingsText;
@@ -30,15 +30,20 @@ public class MenuManager : MonoBehaviour
 
     public void ClickStart()
     {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+        mainMenuPanel.SetActive(false);
+        hostgamepanel.SetActive(true);
     }
-
+    public void ClickCloseHostGame()
+    {
+        mainMenuPanel.SetActive(true);
+        hostgamepanel.SetActive(false);
+    }
     public void ClickOpenSettings()
     {
         mainMenuPanel.SetActive(false);
         settingsPanel.SetActive(true);
     }
-
+    
     public void ClickExit()
     {
         Debug.Log("Игрок нажал на Выход");
@@ -54,4 +59,5 @@ public class MenuManager : MonoBehaviour
         mainMenuPanel.SetActive(true);
         settingsPanel.SetActive(false);
     }
+    
 }
