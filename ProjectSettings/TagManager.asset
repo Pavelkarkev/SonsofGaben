@@ -16,7 +16,7 @@ TagManager:
   - Characters
   - 'Survivor '
   - Interactable
-  - 
+  - generator
   - 
   - 
   - 
@@ -50,6 +50,9 @@ TagManager:
     locked: 0
   - name: Players
     uniqueID: 2420289069
+    locked: 0
+  - name: InteractableWindow
+    uniqueID: 598670275
     locked: 0
   m_RenderingLayers:
   - Default

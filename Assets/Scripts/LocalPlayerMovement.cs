@@ -74,6 +74,8 @@ public class NetworkPlayerMovement : NetworkBehaviour
         {
             return;
         }
+        Vector2 moveInput = GetInputVector();
+        rb.linearVelocity = moveInput * MaxSpeed;
         MovePlayer();
     }
 

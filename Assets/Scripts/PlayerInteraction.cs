@@ -7,16 +7,25 @@ public class PlayerInteraction : NetworkBehaviour
     [Header("Interaction Settings")]
     [SerializeField] private float interactionRadius = 2f;
     [SerializeField] private LayerMask doorLayer;
+    [SerializeField] private LayerMask generatorLayer;
     [SerializeField] private bool isKiller = false;
 
     private NetworkDoor currentDoor;
+    private NetworkGenerator currentGenerator;
     private bool isHoldingInteract = false;
     private float holdTimer = 0f;
+    private bool isInsideMinigame = false;
+
+    public NetworkGenerator CurrentGenerator => currentGenerator;
 
     private void Update()
     {
-        if (!IsOwner) return;
+        if (!IsOwner || isInsideMinigame) return;
 
+        if (!isKiller)
+        {
+            FindClosestGenerator();
+        }
         FindClosestDoor();
 
         if (Keyboard.current == null) return;
@@ -72,16 +81,53 @@ public class PlayerInteraction : NetworkBehaviour
         currentDoor = closestDoor;
     }
 
+    private void FindClosestGenerator()
+    {
+        Collider2D[] generators = Physics2D.OverlapCircleAll(transform.position, interactionRadius, generatorLayer);
+
+        if (generators.Length == 0)
+        {
+            currentGenerator = null;
+            return;
+        }
+
+        float minDistance = float.MaxValue;
+        NetworkGenerator closestGen = null;
+
+        foreach (var col in generators)
+        {
+            if (col.TryGetComponent<NetworkGenerator>(out var gen))
+            {
+                if (gen.IsRepaired) continue;
+                float dist = Vector2.Distance(transform.position, col.transform.position);
+                if (dist < minDistance)
+                {
+                    minDistance = dist;
+                    closestGen = gen;
+                }
+            }
+        }
+
+        currentGenerator = closestGen;
+    }
+
     private void OnInteractPressed()
     {
-        if (currentDoor == null) return;
-
         if (!isKiller)
         {
-            currentDoor.InteractSurvivorServerRpc();
+            if (currentGenerator != null)
+            {
+                StartGeneratorMinigame();
+            }
+            else if (currentDoor != null)
+            {
+                currentDoor.InteractSurvivorServerRpc();
+            }
         }
         else
         {
+            if (currentDoor == null) return;
+
             if (currentDoor.IsOpen)
             {
                 currentDoor.InteractKillerNormalServerRpc();
@@ -93,7 +139,6 @@ public class PlayerInteraction : NetworkBehaviour
                     isHoldingInteract = true;
                     holdTimer = 0f;
                     currentDoor.StartBreakingServerRpc();
-                    Debug.Log("Маньяк начал вскрывать дверь...");
                 }
                 else
                 {
@@ -103,22 +148,49 @@ public class PlayerInteraction : NetworkBehaviour
         }
     }
 
+    private void StartGeneratorMinigame()
+    {
+        TerminalWorldMinigame minigameUI = FindAnyObjectByType<TerminalWorldMinigame>(FindObjectsInactive.Include);
+        if (minigameUI != null)
+        {
+            isInsideMinigame = true;
+            isHoldingInteract = false;
+
+            var movement = GetComponent<NetworkPlayerMovement>();
+            if (movement != null) movement.enabled = false;
+
+            var rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+            }
+
+            minigameUI.gameObject.SetActive(true);
+            minigameUI.StartMinigame(currentGenerator, () =>
+            {
+                isInsideMinigame = false;
+                if (movement != null) movement.enabled = true;
+            });
+        }
+    }
+
     private void OnInteractReleased()
     {
-        if (!isKiller || !isHoldingInteract) return;
+        if (isInsideMinigame) return;
 
         isHoldingInteract = false;
         holdTimer = 0f;
 
-        if (currentDoor != null)
+        if (isKiller && currentDoor != null)
         {
             currentDoor.StopBreakingServerRpc();
-            Debug.Log("Маньяк перестал вскрывать дверь.");
         }
     }
 
     private void HandleInteractionHold()
     {
+        if (!isKiller) return;
+
         if (currentDoor == null || !currentDoor.IsBeingBroken)
         {
             isHoldingInteract = false;
@@ -132,7 +204,6 @@ public class PlayerInteraction : NetworkBehaviour
         {
             isHoldingInteract = false;
             holdTimer = 0f;
-            Debug.Log("Маньяк успешно выломал дверь!");
         }
     }
 

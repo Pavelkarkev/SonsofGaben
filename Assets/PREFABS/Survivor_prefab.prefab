@@ -91,7 +91,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1874678227
   m_SortingLayer: 3
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
   m_Color: {r: 0.4980392, g: 1, b: 0, a: 1}
@@ -217,8 +217,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Movement
   ShowTopMostFoldoutHeaderGroup: 1
   MaxSpeed: 5
-  acceleration: 20
-  deceleration: 20
+  acceleration: 25
+  deceleration: 40
 --- !u!114 &2436892728902738894
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -295,11 +295,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SurvivorDash
   ShowTopMostFoldoutHeaderGroup: 1
-  rb: {fileID: 350591768481655721}
   dashSpeed: 12
-  dashDuration: 0.05
-  postDashSpeedMultiplier: 0.75
-  postDashDuration: 0.5
+  dashDuration: 0.3
   dashCooldown: 1.5
 --- !u!114 &4021884450152369547
 MonoBehaviour:
@@ -337,6 +334,9 @@ MonoBehaviour:
   doorLayer:
     serializedVersion: 2
     m_Bits: 512
+  generatorLayer:
+    serializedVersion: 2
+    m_Bits: 1024
   isKiller: 0
 --- !u!1 &4470486691456532805
 GameObject:
