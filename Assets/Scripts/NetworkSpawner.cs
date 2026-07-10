@@ -1,76 +1,149 @@
 using UnityEngine;
 using Unity.Netcode;
-using UnityEngine.UI;
 using System.Text;
 using System.Collections.Generic;
 
 public class NetworkFlexibleSpawner : MonoBehaviour
 {
-    [Header("UI Кнопки Выбора Роли")]
-    [SerializeField] private Button selectKillerButton;
-    [SerializeField] private Button selectSurvivorButton;
+    public static NetworkFlexibleSpawner Instance { get; private set; }
 
-    [Header("Префабы")]
-    [SerializeField] private GameObject killer_prefab;
-    [SerializeField] private GameObject Survivor_prefab;
+    [Header("Префабы Персонажей")]
+    [SerializeField] private GameObject killerPrefab;
+    [SerializeField] private GameObject survivorPrefab;
 
-    [Header("Doors")]
+    [Header("Точки Спавна Фракций")]
+    [SerializeField] private Transform killerSpawnPoint;       // Одна точка для маньяка
+    [SerializeField] private Transform[] survivorSpawnPoints;   // Массив точек для выживших
+
+    [Header("Статические Префабы Карты")]
     [SerializeField] private GameObject doorPrefab;
     [SerializeField] private Vector3[] doorSpawnPositions;
-
-    [Header("Generators")]
     [SerializeField] private GameObject generatorPrefab;
     [SerializeField] private Vector3[] generatorSpawnPositions;
 
-    // Серверная таблица для хранения соответствия: ClientId -> Выбранная роль
-    private Dictionary<ulong, string> clientRolesTable = new Dictionary<ulong, string>();
+    // Серверная таблица: ClientId -> Выбранная роль ("Killer" или "Survivor")
+    private Dictionary<ulong, string> serverClientRoles = new Dictionary<ulong, string>();
+
+    // Серверный список индексов точек спавна выживших, которые уже заняты
+    private List<int> usedSurvivorSpawnIndices = new List<int>();
+
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
     private void Start()
     {
-        selectKillerButton.onClick.RemoveAllListeners();
-        selectSurvivorButton.onClick.RemoveAllListeners();
-
-        // Обе кнопки теперь ведут на универсальный метод подключения
-        selectKillerButton.onClick.AddListener(() => ConnectWithRole("Killer"));
-        selectSurvivorButton.onClick.AddListener(() => ConnectWithRole("Survivor"));
-
+        // Перехватываем одобрение подключения на сервере
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+
+            // Если это Хост, он спавнит двери и генераторы один раз при старте
+            if (NetworkManager.Singleton.IsServer)
+            {
+                SpawnStaticObjects();
+            }
         }
     }
 
-    private void ConnectWithRole(string role)
+    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-        Debug.Log($"[ВЫБОР] Выбрана роль: {role}. Подготовка сетевых данных...");
+        response.Approved = true;
+        response.CreatePlayerObject = false; // Отключаем автоспавн дефолтных префабов Netcode
+    }
 
-        // Кодируем роль в байты и записываем в ConnectionData клиента перед отправкой
-        byte[] payload = Encoding.UTF8.GetBytes(role);
-        NetworkManager.Singleton.NetworkConfig.ConnectionData = payload;
+    private void OnClientConnected(ulong clientId)
+    {
+        // Ждем, пока клиент выберет роль через GameplayLobbyManager.
+        // Сам спавн теперь будет вызываться из лобби-менеджера по команде.
+        Debug.Log($"[Спавнер] Игрок {clientId} подключился к сцене. Ожидание выбора роли...");
+    }
 
-        // Проверяем, запущена ли уже сетевая сессия на этом ПК
-        if (!NetworkManager.Singleton.IsServer && !NetworkManager.Singleton.IsClient)
+    /// <summary>
+    /// Этот метод будет вызывать сервер (Хост), когда игрок окончательно определился с ролью в лобби
+    /// </summary>
+    public void SpawnPlayerWithRole(ulong clientId, string role)
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+
+        // Сохраняем роль в таблицу
+        serverClientRoles[clientId] = role;
+
+        GameObject prefabToSpawn = (role == "Killer") ? killerPrefab : survivorPrefab;
+        if (prefabToSpawn == null)
         {
-            // Мы первые, кто нажал кнопку в этой сессии -> Запускаем HOST
-            Debug.Log($"[СПАВНЕР] Создание новой сессии. Запуск HOST для роли: {role}");
-            NetworkManager.Singleton.StartHost();
-            SpawnStaticObjects();
+            Debug.LogError($"[Спавнер] Префаб для роли {role} не привязан в инспекторе!");
+            return;
+        }
+
+        Vector3 spawnPosition = Vector3.zero;
+        Quaternion spawnRotation = Quaternion.identity;
+
+        if (role == "Killer")
+        {
+            if (killerSpawnPoint != null)
+            {
+                spawnPosition = killerSpawnPoint.position;
+                spawnRotation = killerSpawnPoint.rotation;
+            }
+            else
+            {
+                Debug.LogWarning("[Спавнер] Точка спавна Киллера не задана! Спавн в центре карты.");
+            }
+        }
+        else // Для Выжившего
+        {
+            int selectedPointIndex = GetAvailableSurvivorSpawnIndex();
+            if (selectedPointIndex != -1 && selectedPointIndex < survivorSpawnPoints.Length)
+            {
+                spawnPosition = survivorSpawnPoints[selectedPointIndex].position;
+                spawnRotation = survivorSpawnPoints[selectedPointIndex].rotation;
+                usedSurvivorSpawnIndices.Add(selectedPointIndex); // Блокируем точку
+                Debug.Log($"[Спавнер] Точка спавна #{selectedPointIndex} успешно заблокирована за игроком {clientId}.");
+            }
+            else
+            {
+                Debug.LogError("[Спавнер] Нет доступных или свободных точек спавна для выжившего!");
+                // Спавним в дефолтной первой точке, если всё совсем плохо
+                if (survivorSpawnPoints.Length > 0) spawnPosition = survivorSpawnPoints[0].position;
+            }
+        }
+
+        // Физический спавн объекта на сервере
+        GameObject playerInstance = Instantiate(prefabToSpawn, spawnPosition, spawnRotation);
+        if (role == "Killer") playerInstance.tag = "Killer";
+
+        // Сетевая регистрация объекта в Netcode
+        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.SpawnAsPlayerObject(clientId);
+            Debug.Log($"[УСПЕХ] Игрок {clientId} ({role}) успешно заспавнен на своей точке.");
         }
         else
         {
-            // Сессия уже активна (работает Хост в первом окне) -> Запускаем CLIENT
-            Debug.Log($"[СПАВНЕР] Обнаружена активная сессия. Запуск CLIENT для роли: {role}");
-            NetworkManager.Singleton.StartClient();
+            Debug.LogError($"[ОШИБКА] На префабе {prefabToSpawn.name} отсутствует NetworkObject!");
         }
+    }
 
-        DeactivateMenu();
+    private int GetAvailableSurvivorSpawnIndex()
+    {
+        // Проходимся по всем точкам и ищем первую, которой нет в списке использованных
+        for (int i = 0; i < survivorSpawnPoints.Length; i++)
+        {
+            if (!usedSurvivorSpawnIndices.Contains(i))
+            {
+                return i;
+            }
+        }
+        return -1; // Свободных точек нет
     }
 
     private void SpawnStaticObjects()
     {
-        Debug.Log("[СЕРВЕР] Спавн статических объектов карты (двери, генераторы)...");
-
         if (doorPrefab != null && doorSpawnPositions != null)
         {
             foreach (Vector3 pos in doorSpawnPositions)
@@ -88,90 +161,6 @@ public class NetworkFlexibleSpawner : MonoBehaviour
                 generatorInstance.GetComponent<NetworkObject>().Spawn();
             }
         }
-    }
-
-    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
-    {
-        // Одобряем подключение входящему игроку
-        response.Approved = true;
-
-        // Отключаем автоматический спавн дефолтных префабов Netcode, чтобы управлять им вручную
-        response.CreatePlayerObject = false;
-
-        // Считываем полезную нагрузку (payload) с ролью от подключающегося клиента
-        string clientRole = Encoding.UTF8.GetString(request.Payload);
-        if (string.IsNullOrEmpty(clientRole)) clientRole = "Survivor"; // Подстраховка
-
-        Debug.Log($"[APPROVAL] Игрок {request.ClientNetworkId} запросил роль: {clientRole}. Подключение одобрено.");
-
-        // Сохраняем информацию о роли игрока в таблицу сервера
-        if (!clientRolesTable.ContainsKey(request.ClientNetworkId))
-        {
-            clientRolesTable.Add(request.ClientNetworkId, clientRole);
-        }
-        else
-        {
-            clientRolesTable[request.ClientNetworkId] = clientRole;
-        }
-    }
-
-    private void OnClientConnected(ulong clientId)
-    {
-        // Только Сервер/Хост имеет право спавнить сетевые объекты на сцене
-        if (!NetworkManager.Singleton.IsServer) return;
-
-        Debug.Log($"[СЕРВЕР] Игрок {clientId} успешно авторизован в сети. Начинаем создание персонажа...");
-
-        // Пытаемся достать роль зашедшего игрока из серверной таблицы
-        string roleToSpawn = "Survivor";
-        if (clientRolesTable.ContainsKey(clientId))
-        {
-            roleToSpawn = clientRolesTable[clientId];
-        }
-        else
-        {
-            // Если хост подключается самым первым, он может проскочить ApprovalCheck локально.
-            // В таком случае берем данные из его собственного ConnectionData
-            byte[] localPayload = NetworkManager.Singleton.NetworkConfig.ConnectionData;
-            if (localPayload != null && localPayload.Length > 0)
-            {
-                roleToSpawn = Encoding.UTF8.GetString(localPayload);
-            }
-        }
-
-        Debug.Log($"[СЕРВЕР] Для Игрока {clientId} создается префаб роли: {roleToSpawn}");
-
-        // Выбираем нужный префаб на основе роли
-        GameObject prefabToSpawn = (roleToSpawn == "Killer") ? killer_prefab : Survivor_prefab;
-
-        if (prefabToSpawn == null)
-        {
-            Debug.LogError($"[ОШИБКА] Префаб для роли {roleToSpawn} не привязан в инспекторе спавнера!");
-            return;
-        }
-
-        // Спавним объект префаба на сервере
-        GameObject playerInstance = Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
-
-        if (roleToSpawn == "Killer") playerInstance.tag = "Killer";
-
-        // Регистрируем объект в сети и передаем права владения (Ownership) конкретному clientId
-        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
-        if (netObj != null)
-        {
-            netObj.SpawnAsPlayerObject(clientId);
-            Debug.Log($"[УСПЕХ] Игрок {clientId} ({roleToSpawn}) успешно заспавнен на сцене.");
-        }
-        else
-        {
-            Debug.LogError($"[ОШИБКА] На префабе {prefabToSpawn.name} отсутствует обязательный компонент NetworkObject!");
-        }
-    }
-
-    private void DeactivateMenu()
-    {
-        if (selectKillerButton != null) selectKillerButton.gameObject.SetActive(false);
-        if (selectSurvivorButton != null) selectSurvivorButton.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
